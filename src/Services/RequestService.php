@@ -65,11 +65,11 @@ class RequestService
     {
         $localWsdlPath = config('nfse-ssa.wsdl_path');
         
-        // Verifica se um caminho local para o WSDL foi configurado e se o arquivo existe
+        // Check if a local path for the WSDL is configured and if the file exists
         if ($localWsdlPath && file_exists($localWsdlPath)) {
             $wsdl = $localWsdlPath;
         } else {
-            // Comportamento original se nenhum WSDL local for fornecido
+            // Original behavior if no local WSDL is provided
             $wsdl = $this->urlBase . $wsdlSuffix;
         }
 
