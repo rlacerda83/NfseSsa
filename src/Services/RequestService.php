@@ -63,7 +63,15 @@ class RequestService
      */
     private function consult($wsdlSuffix, $xml, $method, $return)
     {
-        $wsdl = $this->urlBase . $wsdlSuffix;
+        $localWsdlPath = config('nfse-ssa.wsdl_path');
+        
+        // Check if a local path for the WSDL is configured and if the file exists
+        if ($localWsdlPath && file_exists($localWsdlPath)) {
+            $wsdl = $localWsdlPath;
+        } else {
+            // Original behavior if no local WSDL is provided
+            $wsdl = $this->urlBase . $wsdlSuffix;
+        }
 
         $client = new MySoapClient($wsdl, $this->soapOptions);
 
@@ -71,18 +79,32 @@ class RequestService
 
         $result = call_user_func_array([$client, $method], [$params]);
 
-        $xmlObj = simplexml_load_string($result->{$return});
+        $responseContent = null;
+        if (is_object($result) && isset($result->{$return})) {
+            $responseContent = $result->{$return};
+        } else {
+            $rawXml = $client->__getLastResponse();
+            $openingTag = "<{$return}>";
+            $closingTag = "</{$return}>";
+            $start = strpos($rawXml, $openingTag);
+            if ($start !== false) {
+                $start += strlen($openingTag);
+                $end = strpos($rawXml, $closingTag, $start);
+                if ($end !== false) {
+                    $responseContent = substr($rawXml, $start, $end - $start);
+                }
+            }
+        }
 
-        $response = new Response();
+        $xmlObj = simplexml_load_string(html_entity_decode($responseContent));
+
+        $response = new \Potelo\NfseSsa\Request\Response();
 
         if (isset($xmlObj->ListaMensagemRetorno)) {
             $response->setStatus(false);
-
             foreach ($xmlObj->ListaMensagemRetorno->MensagemRetorno as $mensagem) {
-                $error = new Error();
-
+                $error = new \Potelo\NfseSsa\Request\Error();
                 $arr = get_object_vars($mensagem);
-
                 $error->codigo = $arr['Codigo'];
                 $error->mensagem = $arr['Mensagem'];
                 $error->correcao = $arr['Correcao'];
@@ -90,15 +112,14 @@ class RequestService
             }
         } else {
             $response->setStatus(true);
-
             $json = json_encode($xmlObj);
             $data = json_decode($json, true);
-
             $response->setData($data);
         }
 
         return $response;
     }
+
 
     /**
      * @param $xml
