@@ -1,12 +1,11 @@
 <?php
 
-namespace Potelo\NfseSsa\Services;
+namespace Rlacerda83\NfseSsa\Services;
 
 
-use Potelo\NfseSsa\MySoapClient;
-use Potelo\NfseSsa\Request\Error;
-use Potelo\NfseSsa\Request\Response;
-
+use Rlacerda83\NfseSsa\MySoapClient;
+use Rlacerda83\NfseSsa\Request\Response;
+use Rlacerda83\NfseSsa\Request\Error;
 class RequestService
 {
 
@@ -26,32 +25,40 @@ class RequestService
     private $soapOptions;
 
 
-    public function __construct()
+    public function __construct(array $config = [])
     {
-        if (config('nfse-ssa.homologacao') == true) {
+        $isHomologacao = $config['homologacao'] ?? config('nfse-ssa.homologacao');
+
+        if ($isHomologacao == true) {
             $this->urlBase = 'https://notahml.salvador.ba.gov.br';
         } else {
             $this->urlBase = 'https://nfse.salvador.ba.gov.br';
         }
 
-        $this->certificatePrivate = config('nfse-ssa.certificado_privado_path');
+        if (isset($config['soapOptions'])) {
+            $this->soapOptions = $config['soapOptions'];
+        } else {
+            $this->certificatePrivate = config('nfse-ssa.certificado_privado_path');
+            
+            $password = config('nfse-ssa.certificado_senha');
 
-        $context = stream_context_create([
-            'ssl' => [
-                // set some SSL/TLS specific options
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
-        ]);
+            $context = stream_context_create([
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
+                ]
+            ]);
 
-        $this->soapOptions = [
-            'keep_alive' => true,
-            'trace' => true,
-            'local_cert' => $this->certificatePrivate,
-            'cache_wsdl' => WSDL_CACHE_NONE,
-            'stream_context' => $context
-        ];
+            $this->soapOptions = [
+                'keep_alive' => true,
+                'trace' => true,
+                'local_cert' => $this->certificatePrivate,
+                'passphrase' => $password,
+                'cache_wsdl' => WSDL_CACHE_NONE,
+                'stream_context' => $context
+            ];
+        }
     }
 
     /**
@@ -63,13 +70,13 @@ class RequestService
      */
     private function consult($wsdlSuffix, $xml, $method, $return)
     {
-        $localWsdlPath = config('nfse-ssa.wsdl_path');
+        // $localWsdlPath = config('nfse-ssa.wsdl_path');
+        $localWsdlPath = __DIR__ . '/../resources/wsdl/ConsultaNfse.xml';
         
         // Check if a local path for the WSDL is configured and if the file exists
-        if ($localWsdlPath && file_exists($localWsdlPath)) {
+        if ($localWsdlPath && file_exists($localWsdlPath)) {            
             $wsdl = $localWsdlPath;
         } else {
-            // Original behavior if no local WSDL is provided
             $wsdl = $this->urlBase . $wsdlSuffix;
         }
 
@@ -98,12 +105,13 @@ class RequestService
 
         $xmlObj = simplexml_load_string(html_entity_decode($responseContent));
 
-        $response = new \Potelo\NfseSsa\Request\Response();
+        $response = new \Rlacerda83\NfseSsa\Request\Response();
+        $response->setXmlContent($responseContent);
 
         if (isset($xmlObj->ListaMensagemRetorno)) {
             $response->setStatus(false);
             foreach ($xmlObj->ListaMensagemRetorno->MensagemRetorno as $mensagem) {
-                $error = new \Potelo\NfseSsa\Request\Error();
+                $error = new \Rlacerda83\NfseSsa\Request\Error();
                 $arr = get_object_vars($mensagem);
                 $error->codigo = $arr['Codigo'];
                 $error->mensagem = $arr['Mensagem'];
@@ -218,9 +226,11 @@ class RequestService
         return $response;
     }
 
-    public function consultarNfse($xml)
+    public function consultarNfse(array $dados)
     {
         $wsdlSuffix = '/rps/CONSULTANFSE/ConsultaNfse.svc?wsdl';
+
+        $xml = $this->generateConsultarNfseXmlFromArray($dados);
 
         $finalXml = $this->generateXmlBody($xml, 'ConsultarNfse', 'consultaxml');
 
@@ -230,7 +240,37 @@ class RequestService
             'ConsultarNfse',
             'ConsultarNfseResult'
         );
-
+        
         return $response;
     }
+
+    /**
+     * Gera uma tag XML a partir de uma chave/valor de um array.
+     */
+    private function arrayToXmlTag($array, $key)
+    {
+        if (isset($array[$key]) && $array[$key] !== null && $array[$key] !== '') {
+            $value = $array[$key];
+            $studlyKey = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $key)));
+            return "<{$studlyKey}>{$value}</{$studlyKey}>";
+        }
+        return '';
+    }
+
+    private function generateConsultarNfseXmlFromArray(array $dados)
+    {
+        $xml = '<?xml version="1.0" encoding="utf-8"?>';
+        $xml .= '<ConsultarNfseEnvio xmlns="http://www.abrasf.org.br/ABRASF/arquivos/nfse.xsd">';
+        $xml .= '<Prestador>';
+        $xml .= $this->arrayToXmlTag($dados['prestador'], 'cnpj');
+        $xml .= $this->arrayToXmlTag($dados['prestador'], 'inscricao_municipal');
+        $xml .= '</Prestador>';
+        $xml .= '<PeriodoEmissao>';
+        $xml .= $this->arrayToXmlTag($dados['periodo_emissao'], 'data_inicial');
+        $xml .= $this->arrayToXmlTag($dados['periodo_emissao'], 'data_final');
+        $xml .= '</PeriodoEmissao>';
+        $xml .= '</ConsultarNfseEnvio>';
+        return $xml;
+    }
+
 }

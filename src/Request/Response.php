@@ -1,6 +1,6 @@
 <?php
 
-namespace Potelo\NfseSsa\Request;
+namespace Rlacerda83\NfseSsa\Request;
 
 
 class Response
@@ -19,6 +19,11 @@ class Response
      * @var array
      */
     private $data = [];
+
+    /**
+     * @var string|null
+     */
+    private $xmlContent;
 
     /**
      * @return bool
@@ -63,5 +68,21 @@ class Response
     public function setData($data)
     {
         $this->data = $data;
+    }
+
+   /**
+     * @return string|null
+     */
+    public function getXmlContent(): ? string 
+    {
+        return $this->xmlContent;
+    }
+
+   /**
+     * @param string|null $xmlContent
+     */
+    public function setXmlContent(?string $xmlContent): void 
+    {
+        $this->xmlContent = $xmlContent;
     }
 }

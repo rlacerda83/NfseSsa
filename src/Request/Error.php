@@ -1,7 +1,7 @@
 <?php
 
 
-namespace Potelo\NfseSsa\Request;
+namespace Rlacerda83\NfseSsa\Request;
 
 
 class Error

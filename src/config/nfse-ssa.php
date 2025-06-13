@@ -11,7 +11,7 @@ return [
      |
      */
 
-    'homologacao' => env('NFSESSA_HOMOLOGACAO', true),
+    'homologacao' => env('NFSESSA_HOMOLOGACAO', false),
 
     'certificado_privado_path' => null,
 
@@ -21,6 +21,6 @@ return [
         Path to the local WSDL file.
         Leave as null to try downloading from the URL (original behavior).
     */
-    'wsdl_path' => __DIR__ . '/../src/resources/wsdl/ConsultaNfse.xml',
+    'wsdl_path' => __DIR__ . '/../resources/wsdl/ConsultaNfse.xml',
 
 ];

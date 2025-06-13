@@ -1,6 +1,6 @@
 <?php
 
-namespace Potelo\NfseSsa;
+namespace Rlacerda83\NfseSsa;
 
 /**
  * Classe complementar
