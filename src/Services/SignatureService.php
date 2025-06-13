@@ -1,6 +1,6 @@
 <?php
 
-namespace Potelo\NfseSsa\Services;
+namespace Rlacerda83\NfseSsa\Services;
 
 
 use RobRichards\XMLSecLibs\XMLSecurityDSig;
