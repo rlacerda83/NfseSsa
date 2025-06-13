@@ -27,7 +27,6 @@ class RequestService
 
     public function __construct(array $config = [])
     {
-        // Prioriza a configuração injetada, usando o config() global como fallback.
         $isHomologacao = $config['homologacao'] ?? config('nfse-ssa.homologacao');
 
         if ($isHomologacao == true) {
@@ -36,14 +35,11 @@ class RequestService
             $this->urlBase = 'https://nfse.salvador.ba.gov.br';
         }
 
-        // Pega as opções do SOAP diretamente da configuração injetada, se existirem.
         if (isset($config['soapOptions'])) {
             $this->soapOptions = $config['soapOptions'];
         } else {
-            // Se não houver, monta o array da forma antiga para manter a compatibilidade.
             $this->certificatePrivate = config('nfse-ssa.certificado_privado_path');
             
-            // Adiciona a senha, que estava faltando no construtor original
             $password = config('nfse-ssa.certificado_senha');
 
             $context = stream_context_create([
@@ -58,7 +54,7 @@ class RequestService
                 'keep_alive' => true,
                 'trace' => true,
                 'local_cert' => $this->certificatePrivate,
-                'passphrase' => $password, // Adicionamos a senha
+                'passphrase' => $password,
                 'cache_wsdl' => WSDL_CACHE_NONE,
                 'stream_context' => $context
             ];
@@ -83,7 +79,6 @@ class RequestService
         } else {
             $wsdl = $this->urlBase . $wsdlSuffix;
         }
-        // dd($this->soapOptions); 
 
         $client = new MySoapClient($wsdl, $this->soapOptions);
 
@@ -262,9 +257,6 @@ class RequestService
         return '';
     }
 
-    /**
-     * Gera o XML da consulta de NFS-e a partir de um array de dados.
-     */
     private function generateConsultarNfseXmlFromArray(array $dados)
     {
         $xml = '<?xml version="1.0" encoding="utf-8"?>';
